@@ -1,0 +1,22 @@
+services:
+  openclaw-marketing:
+    build: 
+      context: ./source
+      dockerfile: Dockerfile
+    image: openclaw-marketing:local
+    container_name: openclaw_marketing
+    restart: unless-stopped
+    ports:
+      - "18790:18790"
+    command: ["/bin/bash", "/app/start.sh"]
+    volumes:
+      - ./data:/app/data
+      - ./openclaw.json:/root/.openclaw/openclaw.json
+      - ./AGENTS.md:/app/AGENTS.md
+      - ./skills:/app/skills
+      - ./source/scripts/start-with-sync.sh:/app/start.sh
+    env_file:
+      - .env
+    environment:
+      - OPENCLAW_AGENTS_FILE=/app/AGENTS.md
+      - TZ=Europe/Moscow

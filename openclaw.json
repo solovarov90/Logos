@@ -1,0 +1,89 @@
+{
+    "gateway": {
+        "bind": "lan",
+        "port": 18790,
+        "auth": {
+            "token": "MARKETING_SECURE_TOKEN_2026"
+        },
+        "controlUi": {
+            "allowedOrigins": [
+                "*"
+            ],
+            "allowInsecureAuth": true,
+            "dangerouslyDisableDeviceAuth": true
+        }
+    },
+    "models": {
+        "providers": {
+            "google": {
+                "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+                "apiKey": "${GOOGLE_API_KEY}",
+                "api": "google-generative-ai",
+                "models": [
+                    {
+                        "id": "gemini-3-flash-preview",
+                        "name": "gemini-3-flash-preview"
+                    }
+                ]
+            }
+        }
+    },
+    "channels": {
+        "telegram": {
+            "enabled": true,
+            "botToken": "8462797080:AAGTdkC9Yj5T4y0WM01ZOlZKZMKy_DwOb0M",
+            "allowFrom": [
+                83243485,
+                "solovarov"
+            ],
+            "configWrites": false
+        }
+    },
+    "agents": {
+        "list": [
+            {
+                "id": "default",
+                "default": true,
+                "name": "AIMarketingExpert",
+                "skills": [
+                    "obsidian-navigator",
+                    "web-search",
+                    "time",
+                    "file-system"
+                ],
+                "identity": {
+                    "name": "MarketingAI",
+                    "emoji": "🧠"
+                },
+                "workspace": "/app/data/MarketingVault",
+                "model": "google/gemini-3-flash-preview",
+                "memorySearch": {
+                    "enabled": false
+                },
+                "heartbeat": {},
+                "groupChat": {},
+                "sandbox": {},
+                "tools": {
+                    "profile": "full"
+                }
+            }
+        ]
+    },
+    "tools": {
+        "media": {
+            "audio": {
+                "enabled": true,
+                "scope": {
+                    "default": "allow"
+                }
+            }
+        }
+    },
+    "plugins": {
+        "entries": {
+            "telegram": {
+                "enabled": true
+            }
+        }
+    }
+}
