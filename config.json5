@@ -1,0 +1,77 @@
+{
+  "gateway": {
+    "bind": "lan",
+    "port": 18790,
+    "auth": {
+      "token": "MARKETING_SECURE_TOKEN_2026"
+    },
+    "mode": "local",
+    "controlUi": {
+      "allowedOrigins": ["*"],
+      "allowInsecureAuth": true,
+      "dangerouslyDisableDeviceAuth": true
+    }
+  },
+  "models": {
+    "providers": {
+      "google": {
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "apiKey": "AIzaSyAJ-BTR1Fy30azZtn1IoN2AQW8H1Jt9SqI",
+        "api": "google-generative-ai",
+        "models": [
+          {
+            "id": "gemini-3-flash-preview",
+            "name": "gemini-3-flash-preview",
+            "input": ["text", "image"]
+          },
+          {
+            "id": "gemini-1.5-flash",
+            "name": "gemini-1.5-flash",
+            "input": ["text", "image"]
+          }
+        ]
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8462797080:AAGTdkC9Yj5T4y0WM01ZOlZKZMKy_DwOb0M",
+      "allowFrom": [83243485],
+      "configWrites": false
+    }
+  },
+  "agents": {
+    "list": [
+      {
+        "id": "default",
+        "default": true,
+        "name": "AIMarketingExpert",
+        "skills": ["obsidian-navigator", "web-search", "time", "file-system"],
+        "identity": {
+          "name": "MarketingAI",
+          "emoji": "brain"
+        },
+        "workspace": "/root/.openclaw/MarketingVault",
+        "model": "google/gemini-3-flash-preview",
+        "memorySearch": { "enabled": false },
+        "heartbeat": {},
+        "groupChat": {},
+        "sandbox": {},
+        "tools": { "profile": "full" }
+      }
+    ],
+    "defaults": {
+      "model": { "primary": "google/gemini-3-flash-preview" }
+    }
+  },
+  "tools": {
+    "media": {
+      "audio": { "enabled": true, "scope": { "default": "allow" } },
+      "image": { "enabled": true, "scope": { "default": "allow" } }
+    }
+  },
+  "plugins": {
+    "entries": { "telegram": { "enabled": true } }
+  }
+}

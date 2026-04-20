@@ -17,12 +17,24 @@
         "providers": {
             "google": {
                 "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-                "apiKey": "${GOOGLE_API_KEY}",
+                "apiKey": "AIzaSyAJ-BTR1Fy30azZtn1IoN2AQW8H1Jt9SqI",
                 "api": "google-generative-ai",
                 "models": [
                     {
                         "id": "gemini-3-flash-preview",
-                        "name": "gemini-3-flash-preview"
+                        "name": "gemini-3-flash-preview",
+                        "input": [
+                            "text",
+                            "image"
+                        ]
+                    },
+                    {
+                        "id": "gemini-1.5-flash",
+                        "name": "gemini-1.5-flash",
+                        "input": [
+                            "text",
+                            "image"
+                        ]
                     }
                 ]
             }
@@ -53,7 +65,7 @@
                 ],
                 "identity": {
                     "name": "MarketingAI",
-                    "emoji": "🧠"
+                    "emoji": "brain"
                 },
                 "workspace": "/app/data/MarketingVault",
                 "model": "google/gemini-3-flash-preview",
@@ -76,8 +88,18 @@
                 "scope": {
                     "default": "allow"
                 }
+            },
+            "image": {
+                "enabled": true,
+                "scope": {
+                    "default": "allow"
+                }
             }
         }
+    },
+    "commands": {
+        "native": "auto",
+        "nativeSkills": true
     },
     "plugins": {
         "entries": {
