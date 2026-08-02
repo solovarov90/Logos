@@ -17,6 +17,12 @@
 //   node sp.mjs query <action> [--args '<json>']
 //
 // ПОСТЫ (контент-конвейер: концепт → пост → план):
+//   node sp.mjs write --conceptfile /tmp/concept.txt [--modes personal,expert,short] [--ideas 1]
+//        [--platform threads] — ГЛАВНАЯ КОМАНДА: пишет посты движком «Плана» (стиль автора,
+//        его правила и эталоны). Свой текст поста НЕ сочинять — качество будет хуже.
+//   node sp.mjs autoplan [--posts <id,id>] [--days 7] [--today] [--limit 10] [--old]
+//        — разложить черновики по слотам владельца (его часы/интервал/лимит в день/таймзона).
+//        Без --posts берёт ТОЛЬКО черновики за 48 часов (--old снимает это ограничение).
 //   node sp.mjs post --textfile /tmp/post.txt --platform threads|telegram [--schedule "<ISO+03:00>"]
 //        [--lastimage | --imagefile <localpath> | --bank-asset ID | --image-url U | --banner-prompt "P"]
 //   node sp.mjs posts [--status draft|scheduled|published] [--limit 20]
@@ -141,7 +147,7 @@ async function uploadFile(localPath) {
   if (!r.ok || !j.url) throw new Error(`upload HTTP ${r.status} ${t.slice(0, 200)}`);
   return j.url;
 }
-async function createTask(title, step, { sending = false } = {}) {
+async function createTask(title, step, { sending = false, tries = 45 } = {}) {
   const res = await apiPost("/api/bot/tasks", { type: "mixed", title, plan: [{ order: 1, action: step.action, summary: step.summary || step.action, params: step.params }] });
   if (!res.ok) throw new Error(`создание задачи HTTP ${res.status}: ${JSON.stringify(res.j)}`);
   let task = res.j.task || res.j; const id = task._id || task.id;
@@ -153,7 +159,7 @@ async function createTask(title, step, { sending = false } = {}) {
     if (Array.isArray(et.results) && et.results.length) return et;
   }
   if (!id) return task;
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < tries; i++) {
     await sleep(2000);
     const g = await apiGet(`/api/bot/tasks/${id}`);
     const t = g.j.task || g.j;
@@ -280,6 +286,42 @@ try {
     const { ref, summary } = okRef(task); console.log(`OK: ${summary}${ref ? ` | ref=${ref}` : ""}`); process.exit(0);
   }
   // ——— ПОСТЫ ———
+  else if (cmd === "write") {
+    // Концепт → готовые посты движком «Плана»: стиль автора, его правила, эталоны, ниша.
+    // Свой текст сюда не подсовывать — вся ценность в том, что пишет приложение.
+    if (!f.conceptfile && !f.concept) fail("нужен --conceptfile /tmp/concept.txt (текст концепта; файлом, не строкой)");
+    const concept = f.conceptfile ? readFileSync(f.conceptfile, "utf-8") : f.concept;
+    const modes = String(f.modes || "personal,expert,short").split(",").map(s => s.trim()).filter(Boolean);
+    const params = { concept, modes };
+    if (f.ideas) params.ideas = Number(f.ideas);
+    if (f.platform) params.platform = assertPlatform(f.platform);
+    // Генерация идёт в фоновой функции (пост ~20-40с на формат) — ждём до 5 минут.
+    const task = await createTask("Посты из концепта", { action: "write_posts", summary: "write_posts", params }, { tries: 150 });
+    const { ref, summary } = okRef(task);
+    const rs = (task.results || []).find(r => r && r.ok);
+    const posts = rs?.data?.posts || [];
+    console.log(`OK: ${summary}`);
+    for (const p of posts) console.log(`• [${p.mode}] postId=${p.postId}\n  ${(p.preview || "").replace(/\s+/g, " ").slice(0, 130)}`);
+    console.log(`Полный текст: sp.mjs getpost <postId> | Расставить по слотам: sp.mjs autoplan${ref ? "" : ""}`);
+    process.exit(0);
+  }
+  else if (cmd === "autoplan") {
+    // Раскладка черновиков по слотам владельца (его часы, интервал, лимит в день, таймзона).
+    // Без --posts берутся только черновики за последние 48 часов и не больше --limit (10):
+    // у владельца могут лежать сотни старых черновиков, которые он не собирался публиковать.
+    const params = {};
+    if (f.posts) params.postIds = String(f.posts).split(",").map(s => s.trim()).filter(Boolean);
+    if (f.days) params.daysCount = Number(f.days);
+    if (f.today) params.startTomorrow = false;
+    if (f.limit) params.limit = Number(f.limit);
+    if (f.old) params.includeOld = true;
+    const task = await createTask("Разложить посты по слотам", { action: "auto_schedule_posts", summary: "auto_schedule_posts", params });
+    const { summary } = okRef(task);
+    const rs = (task.results || []).find(r => r && r.ok);
+    console.log(`OK: ${summary}`);
+    for (const s of rs?.data?.scheduled || []) console.log(`• ${s.postId} → ${new Date(s.scheduledAt).toISOString()}`);
+    process.exit(0);
+  }
   else if (cmd === "post") {
     if (!f.textfile && !f.text) fail("нужен --textfile (файл с текстом поста) — русский текст руками в JSON не собирать");
     const content = f.textfile ? readFileSync(f.textfile, "utf-8") : f.text;
@@ -358,7 +400,7 @@ try {
     console.log(`OK: ${summary} | planId=${ref}\nЭто ПЛАН (темы), постов он не создаёт. Читать: sp.mjs query listPlans | Пост по пункту: sp.mjs post --textfile ... --platform ...`);
     process.exit(0);
   }
-  else fail(`неизвестная команда: ${cmd || "(пусто)"}. Рассылки: whoami | projects | find | query | get | bank | draft | edit | send | schedule | grant. Посты: post | posts | getpost | postplan | postedit | postrewrite | postdel | postpublish | contentplan.  (+ --project <slug> к любой)`);
+  else fail(`неизвестная команда: ${cmd || "(пусто)"}. Рассылки: whoami | projects | find | query | get | bank | draft | edit | send | schedule | grant. Посты: write | autoplan | post | posts | getpost | postplan | postedit | postrewrite | postdel | postpublish | contentplan.  (+ --project <slug> к любой)`);
 } catch (e) {
   fail(e?.message || String(e));
 }
