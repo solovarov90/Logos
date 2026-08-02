@@ -12,6 +12,7 @@
  *   reddit.mjs search <запрос> [--sub САБ] [--time hour|day|week|month|year|all]
  *                              [--sort relevance|top|new|comments] [--limit N]
  *   reddit.mjs thread <url поста> [--limit N]
+ *   reddit.mjs subs <запрос> [--limit N]   — найти сабреддиты по теме
  *
  * Флаг --json — выдать структурой вместо текста.
  */
@@ -105,6 +106,18 @@ function parseEntries(xml) {
   return out;
 }
 
+/** Для выдачи сабреддитов важны имя и описание, а не автор с датой. */
+function renderSubs(items) {
+  if (!items.length) return "Ничего не нашлось.";
+  return items
+    .map((it, i) => {
+      const name = (it.url.match(/\/r\/([^/]+)/) || [, "?"])[1];
+      const desc = it.text && it.text !== "[link]" ? it.text.replace(/\s+/g, " ") : "— без описания";
+      return `${i + 1}. r/${name}\n   ${it.url}\n   ${desc.slice(0, 300)}`;
+    })
+    .join("\n\n");
+}
+
 function render(items, { withText }) {
   if (!items.length) return "Ничего не нашлось.";
   return items
@@ -149,6 +162,10 @@ try {
       url = `https://www.reddit.com/search.rss?${params}`;
     }
     withText = false; // в поисковой выдаче тела постов нет, только заголовки
+  } else if (cmd === "subs") {
+    const q = positional.join(" ");
+    if (!q) throw new Error("Укажи тему: reddit.mjs subs sobriety");
+    url = `https://www.reddit.com/subreddits/search.rss?${new URLSearchParams({ q })}`;
   } else if (cmd === "thread") {
     const link = positional[0];
     if (!link || !link.includes("/comments/")) {
@@ -162,6 +179,7 @@ try {
         "  sub <саб> [--limit N]                    — свежие посты сабреддита с текстом",
         "  search <запрос> [--sub САБ] [--time week] [--sort top] [--limit N]",
         "  thread <url поста> [--limit N]           — пост целиком + комментарии",
+        "  subs <запрос> [--limit N]                — найти сабреддиты по теме",
         "",
         "Между запросами автоматическая пауза 12 с — Reddit режет пачки (429).",
         "Планируй 3-5 вызовов на прогон, не больше.",
@@ -171,7 +189,8 @@ try {
   }
 
   const items = parseEntries(await fetchFeed(url)).slice(0, limit);
-  console.log(asJson ? JSON.stringify(items, null, 2) : render(items, { withText }));
+  if (asJson) console.log(JSON.stringify(items, null, 2));
+  else console.log(cmd === "subs" ? renderSubs(items) : render(items, { withText }));
 } catch (err) {
   console.error(`ОШИБКА: ${err.message}`);
   process.exit(1);
