@@ -170,7 +170,12 @@ async function createTask(title, step, { sending = false, tries = 45 } = {}) {
 function okRef(task) {
   const rs = Array.isArray(task.results) ? task.results : [];
   const ok = rs.find(r => r && r.ok);
-  if (!ok) throw new Error("действие не выполнено: " + (rs.map(r => r.error || r.summary).join("; ") || `статус ${task.status}`));
+  // В ошибке сначала ЧЕЛОВЕЧЕСКИЙ summary, код — в скобках. Раньше печатался только код
+  // (`posts_not_found`), и агент домысливал причину: «расписание занято до 10 августа».
+  if (!ok) {
+    const why = rs.map(r => [r.summary, r.error && `(${r.error})`].filter(Boolean).join(" ")).filter(Boolean).join("; ");
+    throw new Error("действие не выполнено: " + (why || `статус ${task.status}`));
+  }
   return { ref: ok.ref, summary: ok.summary || "" };
 }
 
@@ -319,7 +324,11 @@ try {
     const { summary } = okRef(task);
     const rs = (task.results || []).find(r => r && r.ok);
     console.log(`OK: ${summary}`);
-    for (const s of rs?.data?.scheduled || []) console.log(`• ${s.postId} → ${new Date(s.scheduledAt).toISOString()}`);
+    // Время печатаем в зоне владельца (у клиентов она не всегда МСК): в UTC агент
+    // читал часы буквально и переносил их в отчёт Петру со сдвигом.
+    const tz = rs?.data?.timezone || "Europe/Moscow";
+    const fmt = (d) => new Date(d).toLocaleString("ru-RU", { timeZone: tz, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    for (const s of rs?.data?.scheduled || []) console.log(`• ${s.postId} → ${fmt(s.scheduledAt)} (${tz})`);
     process.exit(0);
   }
   else if (cmd === "post") {
